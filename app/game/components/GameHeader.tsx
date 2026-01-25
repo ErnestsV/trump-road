@@ -1,14 +1,16 @@
+import Image from "next/image";
+import Link from "next/link";
+
 type GameHeaderProps = {
-  title: string;
   balanceLabel: string;
 };
 
-export default function GameHeader({ title, balanceLabel }: GameHeaderProps) {
+export default function GameHeader({ balanceLabel }: GameHeaderProps) {
   return (
     <header className="gameHeader">
-      <div>
-        <h1>{title}</h1>
-      </div>
+       <Link className="logoLink" href="/">
+        <Image src="/logo.png" alt="Trump Road logo" width={100} height={100} />
+      </Link>
       <div className="balanceTotal">
         <span>Total balance</span>
         <strong>{balanceLabel}</strong>

@@ -215,7 +215,12 @@ export default function GameCanvas({
           ? clamp((cameraOffsetRef.current - 1.2) / 0.7, 0, 1)
           : 0;
       const sidewalkWidth = nominalSidewalkWidth * (1 - shrinkProgress);
-      const roadWidth = (width - nominalSidewalkWidth) / visibleRoads;
+      const availableWidth = Math.max(0, width - nominalSidewalkWidth);
+      const roadWidth = availableWidth / visibleRoads;
+      if (roadWidth <= 0) {
+        animationId = window.requestAnimationFrame(render);
+        return;
+      }
       const characterRoadWidth = roadWidth;
       const anchorIndex = isMobile ? 0 : 1;
       const resetReady =
@@ -614,22 +619,24 @@ export default function GameCanvas({
         lostSprite?.naturalWidth &&
         time - crashStartRef.current >= 300;
 
-      // Soft ground shadow under the character.
-      const shadowWidth = characterRoadWidth * 0.26;
-      const shadowHeight = shadowWidth * 0.15;
+      if (!showLostState) {
+        // Soft ground shadow under the character.
+        const shadowWidth = Math.max(0.1, characterRoadWidth * 0.26);
+        const shadowHeight = Math.max(0.1, shadowWidth * 0.15);
 
-      ctx.fillStyle = "rgba(0,0,0,0.2)";
-      ctx.beginPath();
-      ctx.ellipse(
-        playerX + 5,
-        playerY - legsHeight * 0.12,
-        shadowWidth,
-        shadowHeight,
-        0,
-        0,
-        Math.PI * 2,
-      );
-      ctx.fill();
+        ctx.fillStyle = "rgba(0,0,0,0.2)";
+        ctx.beginPath();
+        ctx.ellipse(
+          playerX + 5,
+          playerY - legsHeight * 0.12,
+          shadowWidth,
+          shadowHeight,
+          0,
+          0,
+          Math.PI * 2,
+        );
+        ctx.fill();
+      }
 
       if (showLostState && lostSprite?.naturalWidth) {
         const lostWidth = characterRoadWidth * 1;
@@ -781,5 +788,14 @@ export default function GameCanvas({
     return () => window.cancelAnimationFrame(animationId);
   }, [bulletStateRef, forcedBulletRef, totalRoads]);
 
-  return <canvas ref={canvasRef} className="gameCanvas" />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className="gameCanvas"
+      role="img"
+      aria-label="Game road view"
+    >
+      Game road view
+    </canvas>
+  );
 }
