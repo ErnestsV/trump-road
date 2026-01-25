@@ -24,3 +24,131 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.srOnly {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid #f1c04c;
+  outline-offset: 3px;
+}
+
+.sitePage {
+  min-height: 100vh;
+  background: #0b0b0b;
+  color: #f4f4f4;
+  display: flex;
+  flex-direction: column;
+}
+
+.siteHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px;
+}
+
+.logoLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: transform 0.2s ease;
+}
+
+.logoLink:hover {
+  transform: scale(1.06);
+}
+
+.siteNav {
+  display: inline-flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.siteNav a {
+  color: #f4f4f4;
+  text-decoration: none;
+  opacity: 0.8;
+}
+
+.siteNav a:hover {
+  opacity: 1;
+}
+
+.homeMain {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.homeHeroLink {
+  display: inline-flex;
+  transition: transform 0.25s ease;
+}
+
+.homeHeroLink:hover {
+  transform: scale(1.06);
+}
+
+.homeHeroImage {
+  animation: homePulse 1.8s ease-in-out 1 forwards;
+  transform: scale(0.92);
+  max-width: min(80vw, 720px);
+  height: auto;
+}
+
+.instructionsMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 40px 32px 64px;
+  max-width: 760px;
+}
+
+.instructionsMain h1 {
+  font-size: 32px;
+  letter-spacing: 0.02em;
+}
+
+.instructionsMain p {
+  font-size: 16px;
+  line-height: 1.6;
+  color: rgba(244, 244, 244, 0.82);
+}
+
+@keyframes homePulse {
+  0% {
+    transform: scale(0.5);
+  }
+  50% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+
+@media (min-width: 481px) {
+  .siteNav {
+    font-size: 24px;
+  }
+}

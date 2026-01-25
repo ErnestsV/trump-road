@@ -20,7 +20,7 @@ const DIFFICULTY_PRESETS: Record<
 > = {
   easy: {
     multipliers: [1.03, 1.06, 1.1, 1.15, 1.19, 1.24, 1.3],
-    collisionChance: 0,
+    collisionChance: 0.13,
   },
   medium: {
     multipliers: [1.12, 1.2, 1.35, 1.5, 1.7, 1.9],
@@ -113,6 +113,13 @@ export default function GamePage() {
   const resetTimeoutRef = useRef<number | null>(null);
 
   const difficultyData = DIFFICULTY_PRESETS[difficulty];
+  const statusMessage = crashed
+    ? "Shot down. Resetting the run."
+    : wonRound
+      ? `You won with x${winMultiplier.toFixed(2)}.`
+      : playerRoadIndex >= 0
+        ? `Moved to road ${playerRoadIndex + 1}.`
+        : "Ready to play.";
   // Resets round state; optionally re-rolls multipliers and hazards.
   const resetRound = (seedNewRoads: boolean) => {
     setPlayerRoadIndex(-1);
@@ -324,6 +331,9 @@ export default function GamePage() {
 
   return (
     <main className="gameRoot">
+      <div className="srOnly" aria-live="polite">
+        {statusMessage}
+      </div>
       <GameHeader
         balanceLabel={`${formatMoney(balance)} $`}
         title="Trump Road (Demo)"
