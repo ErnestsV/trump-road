@@ -336,7 +336,6 @@ export default function GamePage() {
       </div>
       <GameHeader
         balanceLabel={`${formatMoney(balance)} $`}
-        title="Trump Road (Demo)"
       />
 
       <section className="gameStage">
