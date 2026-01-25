@@ -2,7 +2,7 @@
 
 Trump Road is a demo gambling-style lane game inspired by Chicken Road, built with Next.js and canvas-based rendering. Move forward across lanes, avoid getting shot down, and cash out at any time.
 
-![Trump Road preview](./preview.png)
+![Trump Road preview](./public/preview.png)
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
