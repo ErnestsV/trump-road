@@ -9,6 +9,7 @@ import GameHeader from "./components/GameHeader";
 type DifficultyKey = "easy" | "medium" | "hard" | "hardcore";
 
 const TOTAL_ROADS = 18;
+const PLAY_ROADS = TOTAL_ROADS - 1;
 const BET_OPTIONS = [1.5, 2.5, 7, 15];
 const MIN_BET = 0.01;
 const MAX_BET = 150;
@@ -19,7 +20,7 @@ const DIFFICULTY_PRESETS: Record<
 > = {
   easy: {
     multipliers: [1.03, 1.06, 1.1, 1.15, 1.19, 1.24, 1.3],
-    collisionChance: 0.12,
+    collisionChance: 0,
   },
   medium: {
     multipliers: [1.12, 1.2, 1.35, 1.5, 1.7, 1.9],
@@ -56,12 +57,13 @@ const buildMultipliers = (difficulty: DifficultyKey) => {
   const { start, end, curve, jitter } = MULTIPLIER_CURVES[difficulty];
   const values: number[] = [];
 
-  for (let i = 0; i < TOTAL_ROADS; i += 1) {
-    const t = i / (TOTAL_ROADS - 1);
+  for (let i = 0; i < PLAY_ROADS; i += 1) {
+    const t = i / (PLAY_ROADS - 1);
     const curved = Math.pow(t, curve);
     const baseValue = start + (end - start) * curved;
     const noise = (Math.random() * 2 - 1) * jitter;
     const value = Math.max(start, baseValue + noise);
+
     values.push(Number(value.toFixed(2)));
   }
 
@@ -75,11 +77,12 @@ const buildMultipliers = (difficulty: DifficultyKey) => {
 // Picks roads that can shoot (visual bullets and forced loss events).
 const buildHazards = (difficulty: DifficultyKey) =>
   Array.from(
-    { length: TOTAL_ROADS },
+    { length: PLAY_ROADS },
     () => Math.random() < DIFFICULTY_PRESETS[difficulty].collisionChance,
   );
 
 export default function GamePage() {
+  // Core gameplay state.
   const [difficulty, setDifficulty] = useState<DifficultyKey>("easy");
   const [multipliers, setMultipliers] = useState<number[]>(
     () => buildMultipliers("easy"),
@@ -88,18 +91,24 @@ export default function GamePage() {
     buildHazards("easy"),
   );
   const [walls, setWalls] = useState<boolean[]>(
-    () => Array(TOTAL_ROADS).fill(false),
+    () => Array(PLAY_ROADS).fill(false),
   );
   const [playerRoadIndex, setPlayerRoadIndex] = useState(-1);
+  // Player balance and bet configuration.
   const [balance, setBalance] = useState(1000);
   const [selectedBet, setSelectedBet] = useState(BET_OPTIONS[0]);
   const [betInput, setBetInput] = useState(`${BET_OPTIONS[0]}`);
+  // Round lifecycle state.
   const [roundActive, setRoundActive] = useState(false);
   const [activeBet, setActiveBet] = useState(0);
   const [currentPayout, setCurrentPayout] = useState(0);
   const [crashed, setCrashed] = useState(false);
   const [resetPending, setResetPending] = useState(false);
   const [resetStartTime, setResetStartTime] = useState<number | null>(null);
+  const [wonRound, setWonRound] = useState(false);
+  const [winMultiplier, setWinMultiplier] = useState(0);
+  const [winProfit, setWinProfit] = useState(0);
+  const winTimeoutRef = useRef<number | null>(null);
   const [difficultyOpen, setDifficultyOpen] = useState(true);
   const resetTimeoutRef = useRef<number | null>(null);
 
@@ -107,18 +116,28 @@ export default function GamePage() {
   // Resets round state; optionally re-rolls multipliers and hazards.
   const resetRound = (seedNewRoads: boolean) => {
     setPlayerRoadIndex(-1);
-    setWalls(Array(TOTAL_ROADS).fill(false));
+    setWalls(Array(PLAY_ROADS).fill(false));
     setRoundActive(false);
     setActiveBet(0);
     setCurrentPayout(0);
     setCrashed(false);
     setResetPending(false);
     setResetStartTime(null);
+    setWonRound(false);
+    setWinMultiplier(0);
+    setWinProfit(0);
+
     forcedBulletRef.current = null;
     if (resetTimeoutRef.current !== null) {
       window.clearTimeout(resetTimeoutRef.current);
       resetTimeoutRef.current = null;
     }
+
+    if (winTimeoutRef.current !== null) {
+      window.clearTimeout(winTimeoutRef.current);
+      winTimeoutRef.current = null;
+    }
+
     if (seedNewRoads) {
       setMultipliers(buildMultipliers(difficulty));
       setHazards(buildHazards(difficulty));
@@ -134,12 +153,14 @@ export default function GamePage() {
 
   const syncBetValue = (value: number) => {
     const clamped = clampBet(value);
+
     setSelectedBet(clamped);
     setBetInput(clamped.toFixed(2));
   };
 
   const handleBetInputChange = (value: string) => {
     setBetInput(value);
+
     const parsed = Number(value);
     if (!Number.isNaN(parsed) && Number.isFinite(parsed)) {
       setSelectedBet(clampBet(parsed));
@@ -152,6 +173,7 @@ export default function GamePage() {
       syncBetValue(MIN_BET);
       return;
     }
+
     syncBetValue(parsed);
   };
 
@@ -160,35 +182,48 @@ export default function GamePage() {
     const baseChance = difficultyData.collisionChance;
     const betFactor = betAmount / MAX_BET;
     const adjusted = baseChance * (1 + betFactor * 0.9);
+
     return Math.min(0.95, adjusted);
   };
 
   // Advances one road, applying loss roll, wall placement, and payout update.
   const handlePlay = () => {
+    // Allow a manual reset if the player clicks during end states.
     if (crashed) {
       resetRound(true);
       return;
     }
 
+    if (wonRound) {
+      resetRound(true);
+      return;
+    }
+
+    // Move one lane forward; the final lane is reserved for the limo.
     const nextIndex = playerRoadIndex + 1;
     if (nextIndex >= TOTAL_ROADS) return;
 
     const betAmount = roundActive ? activeBet : selectedBet;
 
     if (!roundActive) {
+      // Lock in the bet on the first move of the run.
       if (balance < betAmount) return;
+
       setBalance((prev) => prev - betAmount);
       setRoundActive(true);
       setActiveBet(betAmount);
     }
 
+    // Decide whether this step is a loss (bullets, crash, delayed reset).
     const lossRoll = Math.random() < getLossChance(betAmount);
     if (lossRoll) {
       const now = performance.now();
       forcedBulletRef.current = { roadIndex: nextIndex, until: now + 900 };
       const bulletState = bulletStateRef.current[nextIndex];
+
       bulletState.active = true;
       bulletState.nextToggle = now + 600 + Math.random() * 600;
+
       setCurrentPayout(0);
       setRoundActive(false);
       setActiveBet(0);
@@ -196,23 +231,46 @@ export default function GamePage() {
       setResetStartTime(performance.now());
       setPlayerRoadIndex(nextIndex);
       setCrashed(true);
+
       if (resetTimeoutRef.current !== null) {
         window.clearTimeout(resetTimeoutRef.current);
       }
+
       resetTimeoutRef.current = window.setTimeout(() => {
         resetRound(true);
       }, 2000);
+
       return;
     }
 
+    // Successful move: place barrier, update payout, and check for win.
     setPlayerRoadIndex(nextIndex);
     setWalls((prev) => {
       const next = [...prev];
       next[nextIndex] = true;
       return next;
     });
+
     const nextMultiplier = multipliers[nextIndex];
-    setCurrentPayout(betAmount * nextMultiplier);
+    const payout = betAmount * nextMultiplier;
+
+    setCurrentPayout(payout);
+
+    if (nextIndex >= PLAY_ROADS - 1) {
+      // Winning state triggers overlay and auto reset after a short delay.
+      setWinMultiplier(nextMultiplier);
+      setWinProfit(payout - betAmount);
+      setWonRound(true);
+      setRoundActive(false);
+
+      if (winTimeoutRef.current !== null) {
+        window.clearTimeout(winTimeoutRef.current);
+      }
+
+      winTimeoutRef.current = window.setTimeout(() => {
+        resetRound(true);
+      }, 2000);
+    }
   };
 
   // Cashes out current payout and resets the run.
@@ -224,9 +282,10 @@ export default function GamePage() {
 
   // Initialize bullet toggling timers for each road.
   const createBulletStates = () =>
-    Array.from({ length: TOTAL_ROADS }, () => ({
+    Array.from({ length: PLAY_ROADS }, () => ({
       active: false,
-      nextToggle: Math.random() * 600,
+      nextToggle: Infinity,
+      startTime: 0,
     }));
 
   const bulletStateRef = useRef(createBulletStates());
@@ -237,7 +296,7 @@ export default function GamePage() {
   useEffect(() => {
     setMultipliers(buildMultipliers(difficulty));
     setHazards(buildHazards(difficulty));
-    setWalls(Array(TOTAL_ROADS).fill(false));
+    setWalls(Array(PLAY_ROADS).fill(false));
     setPlayerRoadIndex(-1);
     setRoundActive(false);
     setActiveBet(0);
@@ -245,11 +304,21 @@ export default function GamePage() {
     setCrashed(false);
     setResetPending(false);
     setResetStartTime(null);
+    setWonRound(false);
+    setWinMultiplier(0);
+    setWinProfit(0);
+
     forcedBulletRef.current = null;
     if (resetTimeoutRef.current !== null) {
       window.clearTimeout(resetTimeoutRef.current);
       resetTimeoutRef.current = null;
     }
+
+    if (winTimeoutRef.current !== null) {
+      window.clearTimeout(winTimeoutRef.current);
+      winTimeoutRef.current = null;
+    }
+
     bulletStateRef.current = createBulletStates();
   }, [difficulty]);
 
@@ -266,11 +335,15 @@ export default function GamePage() {
           crashed={crashed}
           forcedBulletRef={forcedBulletRef}
           hazards={hazards}
+          limousineActive={playerRoadIndex >= PLAY_ROADS - 1}
           multipliers={multipliers}
           playerRoadIndex={playerRoadIndex}
           resetPending={resetPending}
           resetStartTime={resetStartTime}
           totalRoads={TOTAL_ROADS}
+          showWinOverlay={wonRound}
+          winMultiplier={winMultiplier}
+          winProfit={winProfit}
           walls={walls}
         />
         {crashed && <div className="crashBanner">Shot down</div>}
