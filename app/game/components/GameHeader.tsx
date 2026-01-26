@@ -12,7 +12,7 @@ export default function GameHeader({ balanceLabel }: GameHeaderProps) {
         <Image src="/logo.png" alt="Trump Road logo" width={100} height={100} />
       </Link>
       <div className="balanceTotal">
-        <span>Total balance</span>
+        <span>Total balance:</span>
         <strong>{balanceLabel}</strong>
       </div>
     </header>

@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 type DifficultyKey = "easy" | "medium" | "hard" | "hardcore";
 
 type BottomPanelProps = {
@@ -103,7 +105,14 @@ export default function BottomPanel({
           aria-expanded={difficultyOpen}
         >
           <h2>Difficulty</h2>
-          <span className="chevron">{">"}</span>
+          <Image
+            className="chevron"
+            src="/chevron.png"
+            alt=""
+            width={20}
+            height={12}
+            aria-hidden="true"
+          />
         </button>
       </div>
       <div className={`difficultyContent ${difficultyOpen ? "open" : "closed"}`}>

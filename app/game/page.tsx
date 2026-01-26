@@ -109,7 +109,7 @@ export default function GamePage() {
   const [winMultiplier, setWinMultiplier] = useState(0);
   const [winProfit, setWinProfit] = useState(0);
   const winTimeoutRef = useRef<number | null>(null);
-  const [difficultyOpen, setDifficultyOpen] = useState(true);
+  const [difficultyOpen, setDifficultyOpen] = useState(false);
   const resetTimeoutRef = useRef<number | null>(null);
 
   const difficultyData = DIFFICULTY_PRESETS[difficulty];
@@ -299,6 +299,17 @@ export default function GamePage() {
   const forcedBulletRef = useRef<{ roadIndex: number; until: number } | null>(
     null,
   );
+
+  useEffect(() => {
+    // Default: collapsed on mobile, expanded on desktop.
+    const updateDifficultyOpen = () => {
+      if (typeof window === "undefined") return;
+      setDifficultyOpen(window.innerWidth >= 720);
+    };
+    updateDifficultyOpen();
+    window.addEventListener("resize", updateDifficultyOpen);
+    return () => window.removeEventListener("resize", updateDifficultyOpen);
+  }, []);
 
   useEffect(() => {
     setMultipliers(buildMultipliers(difficulty));
