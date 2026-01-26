@@ -190,7 +190,7 @@ export default function GamePage() {
     const betFactor = betAmount / MAX_BET;
     const adjusted = baseChance * (1 + betFactor * 0.9);
 
-    return Math.min(0.95, adjusted);
+    return Math.min(0.6, adjusted);
   };
 
   // Advances one road, applying loss roll, wall placement, and payout update.
