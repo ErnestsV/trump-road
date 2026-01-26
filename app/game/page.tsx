@@ -20,19 +20,19 @@ const DIFFICULTY_PRESETS: Record<
 > = {
   easy: {
     multipliers: [1.03, 1.06, 1.1, 1.15, 1.19, 1.24, 1.3],
-    collisionChance: 0.13,
+    collisionChance: 0.1,
   },
   medium: {
     multipliers: [1.12, 1.2, 1.35, 1.5, 1.7, 1.9],
-    collisionChance: 0.28,
+    collisionChance: 0.2,
   },
   hard: {
     multipliers: [1.35, 1.6, 2.1, 2.75, 3.4],
-    collisionChance: 0.4,
+    collisionChance: 0.35,
   },
   hardcore: {
     multipliers: [1.63, 2.8, 4.95, 9.08],
-    collisionChance: 0.55,
+    collisionChance: 0.45,
   },
 };
 
