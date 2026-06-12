@@ -405,11 +405,6 @@
     align-items: center;
   }
 
-  .logoLink img {
-    width: 150px;
-    height: 100px;
-  }
-
   .chevron {
     display: none;
   }
